@@ -1,1 +1,1 @@
-Doku Generator für Schmidts Seminare
+Doku Generator fÃ¼r Schmidts Seminare
