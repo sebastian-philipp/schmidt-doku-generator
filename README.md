@@ -1,0 +1,1 @@
+Doku Generator für Schmidts Seminare
