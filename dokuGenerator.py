@@ -154,19 +154,31 @@ def frameSubSection(meta, prev, next, subSection):
 """ % subSection
 
 def prettyText(text):
-	def handlePrefix(l):
+	def handlePrefix(l, inPre):
 		if l.startswith("\\h4"):
-			return elem("h4", l[3:])
+			return (elem("h4", l[3:]) , inPre)
 		elif l.startswith("\\a"):
-			return toA(l[2:], l[2:]) + "<br>"
+			return (toA(l[2:], l[2:]) + "<br>", inPre)
+		elif l.startswith("\\code{"):
+			return ("</p><pre>" + l[7:], True)
+		elif l.startswith("\\code}"):
+			return ("</pre><p>" + l[7:], False)
+		elif not inPre:
+			return (l + "<br>", inPre)
 		else:
-			return l + "<br>"
-	return "\n".join(map(handlePrefix, text.splitlines()))
+			return (l, inPre)
+	inPre = False
+	newText = []
+	for l in text.splitlines():
+		(ll, inPre) = handlePrefix(l, inPre)
+		newText.append(ll)
+	return "\n".join(newText)
 
 def toSubSection(number, subSection):
 	subSection["number"] = number
 	subSection["content"] = toP(prettyText(subSection["content"]))
 	return """
+		<hr />
 		<h2><a name="%(number)s">%(name)s</a></h2>
 %(content)s
 """ % subSection
