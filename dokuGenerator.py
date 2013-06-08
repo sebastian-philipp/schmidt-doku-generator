@@ -154,23 +154,33 @@ def frameSubSection(meta, prev, next, subSection):
 """ % subSection
 
 def prettyText(text):
-	def handlePrefix(l, inPre):
+	def handlePrefix(l, context):
+		if context is None:
+			context = {"inPre":False, "inTable":False}
 		if l.startswith("\\h4"):
-			return (elem("h4", l[3:]) , inPre)
+			l = elem("h4", l[3:])
 		elif l.startswith("\\a"):
-			return (toA(l[2:], l[2:]) + "<br>", inPre)
+			l = toA(l[2:], l[2:]) + "<br>"
 		elif l.startswith("\\code{"):
-			return ("</p><pre>" + l[7:], True)
+			context["inPre"] = True
+			l = "</p><pre>" + l[7:]
 		elif l.startswith("\\code}"):
-			return ("</pre><p>" + l[7:], False)
-		elif not inPre:
-			return (l + "<br>", inPre)
-		else:
-			return (l, inPre)
-	inPre = False
+			context["inPre"] = False
+			l = "</pre><p>" + l[7:]
+		elif l.startswith("\\table{"):
+			context["inTable"] = True
+			l = "</p><table border='1'>" + l[8:]
+		elif l.startswith("\\table}"):
+			context["inTable"] = False
+			l = "</table><p>" + l[8:]
+		elif not context["inPre"] and not context["inTable"]:
+			l += "<br>"
+		return (l, context)
+
+	context = None
 	newText = []
 	for l in text.splitlines():
-		(ll, inPre) = handlePrefix(l, inPre)
+		(ll, context) = handlePrefix(l, context)
 		newText.append(ll)
 	return "\n".join(newText)
 
