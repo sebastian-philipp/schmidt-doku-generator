@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import xml.dom.minidom
+from xml.sax.saxutils import escape
 
 def prettyPrint(xmlString):
 	x = xml.dom.minidom.parseString(xmlString)
@@ -44,16 +45,52 @@ def sectionToNaviElem(section, prefix = "", postfix = ""):
 def sectionToFileName(section):
 	return section["name"].lower() + ".html"
 
+colorize = """
+<script language="JavaScript">
+function colorize(){
+	var cWords = ["int", "bool", "return", "false", "true", "if"]
+	var keywords = {
+		"csharp":		cWords.concat(["from", "in", "where", "select", "var", "=&gt;", "string", "public", "private", "static", "this", "interface", "class", "new", "null", "as"]),
+		"cpp":			cWords.concat(["class"]),
+		"javascript":	cWords.concat(["function", "var", "new", "Object", "Array"]),
+		"haskell":		["-&gt;", "::", "data", "do", "&lt;-"],
+		"ruby":			["class", "New", "new", "def", "end", "require", "module"]
+	}
+
+
+	for (lang in keywords) {
+		var words = keywords[lang]
+		var element = document.getElementsByClassName(lang);
+		for( var i=0; i<element.length; i++ ) {
+			var newHTML = element[i].innerHTML;
+
+			for( var j=0; j<words.length; j++ ) {
+				newHTML = newHTML.replace(new RegExp("(^|\\\s|\\\.|\\\(|\\\{)(" + words[j] + ")(?=\\\s|\\\.|\\\(|\\\[|$)", "g"),'$1<span style="color:blue">$2</span>');
+			}
+			element[i].innerHTML = newHTML;
+		}
+	}
+}
+//onload=colorize
+</script>
+"""
 def head(meta):
-	return """
+	return ("""
 <head>
 	<title>Seminar - %(seminar)s</title>
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 	<meta name="author" content="%(author)s" />
 	<style type="text/css"><!--
 	p {width:50em;}
+	span {font-family: monospace;}
+	pre
+	{
+		-moz-tab-size: 4;
+		-o-tab-size:   4;
+		tab-size:      4;
+	}
 	--!></style>
-</head>""" % meta
+</head>""" % meta) + colorize
 
 
 # index
@@ -130,7 +167,7 @@ def writeSubSections(meta, content):
 def frameSubSection(meta, prev, next, subSection):
 	subSection["head"] = head(meta)
 	subSection["navi"] = navigation(meta, prev, next)
-	subSection["desc"] = toP(subSection["desc"])
+	subSection["desc"] = toP(prettyText(subSection["desc"]))
 	subSection["subSections"] = ""
 	for i in range(len(subSection["content"])):
 		subSection["subSections"] += toSubSection(i, subSection["content"][i])
@@ -164,6 +201,10 @@ def prettyText(text):
 		elif l.startswith("\\code{"):
 			context["inPre"] = True
 			l = "</p><pre>" + l[7:]
+		elif l.startswith("\\code-"):
+			context["inPre"] = True
+			lang, rest = l[6:].split("{",1)
+			l = "</p><pre class="+lang+">" + rest
 		elif l.startswith("\\code}"):
 			context["inPre"] = False
 			l = "</pre><p>" + l[7:]
