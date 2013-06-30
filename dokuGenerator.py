@@ -45,52 +45,14 @@ def sectionToNaviElem(section, prefix = "", postfix = ""):
 def sectionToFileName(section):
 	return section["name"].lower() + ".html"
 
-colorize = """
-<script language="JavaScript">
-function colorize(){
-	var cWords = ["int", "bool", "return", "false", "true", "if"]
-	var keywords = {
-		"csharp":		cWords.concat(["from", "in", "where", "select", "var", "=&gt;", "string", "public", "private", "static", "this", "interface", "class", "new", "null", "as"]),
-		"cpp":			cWords.concat(["class"]),
-		"javascript":	cWords.concat(["function", "var", "new", "Object", "Array", "null", "typeof"]),
-		"haskell":		["-&gt;", "::", "data", "do", "&lt;-"],
-		"ruby":			["class", "New", "new", "def", "end", "require", "module"]
-	}
-
-
-	for (lang in keywords) {
-		var words = keywords[lang]
-		var element = document.getElementsByClassName(lang);
-		for( var i=0; i<element.length; i++ ) {
-			var newHTML = element[i].innerHTML;
-
-			for( var j=0; j<words.length; j++ ) {
-				newHTML = newHTML.replace(new RegExp("(^|\\\s|\\\.|\\\(|\\\{)(" + words[j] + ")(?=\\\s|\\\.|\\\(|\\\)|\\\;|\\\[|$)", "g"),'$1<span style="color:blue">$2</span>');
-			}
-			element[i].innerHTML = newHTML;
-		}
-	}
-}
-onload=colorize
-</script>
-"""
 def head(meta):
 	return ("""
 <head>
 	<title>Seminar - %(seminar)s</title>
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 	<meta name="author" content="%(author)s" />
-	<style type="text/css"><!--
-	p {width:50em;}
-	span {font-family: monospace;}
-	pre
-	{
-		-moz-tab-size: 4;
-		-o-tab-size:   4;
-		tab-size:      4;
-	}
-	--!></style>
-</head>""" % meta) + colorize
+	<link rel=stylesheet href=style.css>
+</head>""" % meta)
 
 def footer():
 	return """
@@ -175,7 +137,7 @@ def writeSubSections(meta, content):
 def frameSubSection(meta, prev, next, subSection):
 	subSection["head"] = head(meta)
 	subSection["navi"] = navigation(meta, prev, next)
-	subSection["desc"] = toP(prettyText(subSection["desc"]))
+	subSection["desc"] = toP(prettyPrint2(subSection["desc"]))
 	subSection["subSections"] = ""
 	subSection["footer"] = footer()
 	for i in range(len(subSection["content"])):
@@ -200,44 +162,75 @@ def frameSubSection(meta, prev, next, subSection):
 </html>
 """ % subSection
 
-def prettyText(text):
-	def handlePrefix(l, context):
-		if context is None:
-			context = {"inPre":False, "inTable":False}
-		if l.startswith("\\h4"):
-			l = elem("h4", l[3:])
-		elif l.startswith("\\a"):
-			l = toA(l[2:], l[2:]) + "<br>"
-		elif l.startswith("\\code{"):
-			context["inPre"] = True
-			l = "</p><pre>" + l[7:]
-		elif l.startswith("\\code-"):
-			context["inPre"] = True
-			lang, rest = l[6:].split("{",1)
-			l = "</p><pre class="+lang+">" + rest
-		elif l.startswith("\\code}"):
-			context["inPre"] = False
-			l = "</pre><p>" + l[7:]
-		elif l.startswith("\\table{"):
-			context["inTable"] = True
-			l = "</p><table border='1'>" + l[8:]
-		elif l.startswith("\\table}"):
-			context["inTable"] = False
-			l = "</table><p>" + l[8:]
-		elif not context["inPre"] and not context["inTable"]:
-			l += "<br>"
-		return (l, context)
+def prettyPrintCode(lang, code):
+	try:
+		from pygments import highlight
+		from pygments.lexers import get_lexer_by_name
+		from pygments.formatters import HtmlFormatter
 
-	context = None
-	newText = []
-	for l in text.splitlines():
-		(ll, context) = handlePrefix(l, context)
-		newText.append(ll)
-	return "\n".join(newText)
+		lexer = get_lexer_by_name(lang)
+		formatter = HtmlFormatter(linenos=True, encoding='utf-8')
+
+		return highlight(code, lexer, formatter)
+	except ImportError:
+		print ("pygments not found. fallback.")
+		return "<pre>" + escape(code) + "</pre>"
+
+	
+def prettyPrint2(text):
+	def aFormatter(text):
+		tokens = text.split("\n", 1)
+		return (toA(tokens[0], tokens[0]), tokens[1] if len(tokens) > 1 else "")
+
+	def hFormatter(text):
+		tokens = text.split("\n", 1)
+		line = tokens[0]
+		h = line[0]
+		line = prettyPrint2(line[1:])
+		return ("</p>" + elem("h"+h, line) + "<p>", tokens[1] if len(tokens) > 1 else "")
+
+	def codeFormatter(text):
+		rest = text[1:]
+		lang = ""
+		if text[0] == "-":
+			(lang, rest) = rest.split("{", 1)
+		(code, rest) = rest.split("\\code}", 1)
+		if len(lang):
+			code = prettyPrintCode(lang, code)
+		return ("</p><div class=codediv>" + code + "</div><p>", rest)
+	def tableFormatter(text):
+		(tab, rest) = text[1:].split("\\table}", 1)
+		return ("</p><table border=1>" + tab + "</table><p>", rest)
+	keywords = [
+		("\\a", aFormatter),
+		("\\h", hFormatter),
+		("\\code", codeFormatter),
+		("\\table", tableFormatter)	
+	]
+	done = ""
+	while len(text):
+		keys = filter(lambda x: x[0] >= 0, map(lambda k: (text.find(k[0]), k), keywords))
+		if not len(keys):
+			done += text.replace("\n", "<br />")
+			text = ""
+		else:
+			key = keys[0]
+			(before, text) = text.split(key[1][0], 1)
+			before = prettyPrint2(before)
+			mid, text = key[1][1](text)
+			done += before
+			try:
+				done += mid
+			except:
+				print mid
+				raise
+	return done
+	
+	
 
 def toSubSection(number, subSection):
 	subSection["number"] = number
-	subSection["content"] = toP(prettyText(subSection["content"]))
+	subSection["content"] = toP(prettyPrint2(subSection["content"]))
 	return """
 		<hr />
 		<h2><a name="%(number)s">%(name)s</a></h2>
@@ -248,8 +241,15 @@ def main(meta, content):
 	write("index.html", frameIndex(meta))
 	write("contents.html", frameContents(meta, content))
 	writeSubSections(meta, content)
+	
 
 
 
+if __name__ == "__main__":
+	print prettyPrint2("""
+\\code{
+	foo
+\\code}
+""")
 
 
