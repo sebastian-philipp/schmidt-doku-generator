@@ -38,6 +38,27 @@ Neue
 Zeilen
 werten
 umgebrochen
+\\code-ruby{
+# Inklusive Syntax highlightning
+class Id
+	def initialize(lam)
+		@v = lam
+	end
+
+	def force # :: Id a -> a
+		@v[]
+	end
+
+	def self.unit # a -> Id a
+		lambda {|x| Id.new(lambda { x })}
+	end
+
+	def bind # :: Id a -> (a -> Id b) -> Id b
+		x = self
+		lambda {|f| f[x.force]}
+	end
+end
+\\code}
 """
 				}
 			]
