@@ -45,10 +45,11 @@ def sectionToNaviElem(section, prefix = "", postfix = ""):
 def sectionToFileName(section):
 	return section["name"].lower() + ".html"
 
-def head(meta):
+def head(meta, pagetitle = None):
+	meta["title"] = "Seminar - %s" % meta["seminar"] if pagetitle is None else "%s | Seminar - %s" % (pagetitle, meta["seminar"])
 	return ("""
 <head>
-	<title>Seminar - %(seminar)s</title>
+	<title>%(title)s</title>
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 	<meta name="author" content="%(author)s" />
 	<link rel=stylesheet href=style.css>
@@ -90,7 +91,7 @@ def frameIndex(meta):
 
 def frameContents(meta, content):
 	meta["navi"] = navigation(meta, ("<< Startseite", "index.html"), sectionToNaviElem(content[0], "", " >>"))
-	meta["head"] = head(meta)
+	meta["head"] = head(meta, "Inhaltsverzeichnis")
 	meta["toContentsList"] = toContentsList(content)
 	meta["footer"] = footer()
 	return """
@@ -135,7 +136,7 @@ def writeSubSections(meta, content):
 		write(sectionToFileName(content[i]), frameSubSection(meta, prev, next, content[i]))
 
 def frameSubSection(meta, prev, next, subSection):
-	subSection["head"] = head(meta)
+	subSection["head"] = head(meta, subSection["name"])
 	subSection["navi"] = navigation(meta, prev, next)
 	subSection["desc"] = toP(prettyPrint2(subSection["desc"]))
 	subSection["subSections"] = ""
