@@ -43,8 +43,11 @@ def sectionToNaviElem(section, prefix = "", postfix = ""):
 	return (prefix + section["name"] + postfix, sectionToFileName(section))
 		
 def sectionToFileName(section):
-	return section["name"].lower() + ".html"
-
+	return sectionNameToFileName(section["name"])
+	
+def sectionNameToFileName(sectionName):
+	return sectionName.lower() + ".html"
+	
 def head(meta, pagetitle = None):
 	meta["title"] = "Seminar - %s" % meta["seminar"] if pagetitle is None else "%s | Seminar - %s" % (pagetitle, meta["seminar"])
 	return ("""
@@ -180,7 +183,17 @@ def prettyPrintCode(lang, code):
 	
 def prettyPrint2(text):
 	def aFormatter(text):
-		tokens = text.split("\n", 1)
+		toSection = False
+		if text.startswith("-section") :
+			toSection = True
+			text = text[8:]
+		if text[0] == "{":
+			text = text[1:]
+			tokens = text.split("}", 1)
+		else:
+			tokens = text.split("\n", 1)
+		if toSection:
+			tokens[0] = sectionNameToFileName(tokens[0])
 		return (toA(tokens[0], tokens[0]), tokens[1] if len(tokens) > 1 else "")
 
 	def hFormatter(text):

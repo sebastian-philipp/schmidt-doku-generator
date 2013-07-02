@@ -28,6 +28,11 @@ Inhalt
 
 \\ahttp://spezielle.link/syntax
 
+Dies ist ein \\a-section{Patches} interner link
+
+Inline \\a{http://link.syntax/} gehen auch 
+
+
 \\h4 Geht auch für Unterüberschriften
 """
 				},
@@ -75,6 +80,9 @@ Foo"""
 				{ # subSection
 					"name": "Bar",
 					"content": """
+Text
+<ul><li>a</li></ul>
+Text
 Baaz"""
 				}
 			]
