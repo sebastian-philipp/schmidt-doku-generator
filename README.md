@@ -1,1 +1,3 @@
-Doku Generator für Schmidts Seminare
+~~Doku Generator für Schmidts Seminare~~
+
+Archiviert. Braucht keiner mehr. 
